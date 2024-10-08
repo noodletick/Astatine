@@ -1,0 +1,3 @@
+/home/matthewjouffray/Projects/Code/Astatine/cmake-build-debug/CMakeFiles/Astatine.dir
+/home/matthewjouffray/Projects/Code/Astatine/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/matthewjouffray/Projects/Code/Astatine/cmake-build-debug/CMakeFiles/rebuild_cache.dir
