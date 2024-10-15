@@ -5,6 +5,7 @@
 #include <random>
 #include <iomanip>
 #include "./CUTRIX.cuh"
+#include <omp.h>
 
 
 #ifndef MAT_H

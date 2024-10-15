@@ -145,7 +145,17 @@ nugget::nugget(std::string read) {
 	savefile.close();
 }
 
-nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, std::string init) {// constructor to initialize the neural network with specified shape
+nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, std::string init) {
+// constructor to initialize the neural network with specified shape
+	/*
+	 *----------------------------------------------------------------------------------------------------------
+	 * inputs: size of the input layer
+	 * outputs: size of the output layer
+	 * hid_layers: vector representing the hidden layers, with each element representing a layer of size equal
+	 * to the element.
+	 * init: type of random initialization for weights (uniform or normal distribution)
+	 * ---------------------------------------------------------------------------------------------------------
+	 */
 	bool uni = true;
 	if (init == "normal") {
 		uni = false;
@@ -299,7 +309,6 @@ mat nugget::sigmoidPr(mat a) {
 
 mat nugget::softmax(mat A) {
 
-	
 	mat B = A.xp() / A.xp().sum("cols");
 	return B;
 }
@@ -629,7 +638,7 @@ void nugget::train(const mat& Data, const mat& labels, int it, std::string activ
 	while (epoch < it) {
 		// forward propagation
 		std::chrono::steady_clock::time_point epoch_start = std::chrono::steady_clock::now();
-		std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
 		Z[0] = this->weight[0] * data + this->bias[0];
 		if (activation) {
 
@@ -640,8 +649,6 @@ void nugget::train(const mat& Data, const mat& labels, int it, std::string activ
 			A[0] = ReLu(Z[0]);
 
 		}
-		std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-		std::cout << "one layer forward prop time = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 		for (int i = 1; i < this->layer.size(); i++) {
 			Z[i] = this->weight[i] * A[i - 1] + this->bias[i];
 
@@ -663,16 +670,11 @@ void nugget::train(const mat& Data, const mat& labels, int it, std::string activ
 		Z[layer.size()] = this->weight[layer.size()] * A[layer.size() - 1] + this->bias[layer.size()];
 
 		A[layer.size()] = softmax(Z[layer.size()]); // output layer
-		std::chrono::steady_clock::time_point end2 = std::chrono::steady_clock::now();
-		std::cout << "total forward prop time = " << std::chrono::duration_cast<std::chrono::milliseconds>(end2 - begin).count() << "[ms]" << std::endl;
-		// back propagation
-		begin = std::chrono::steady_clock::now();
+				// back propagation
+
 		dZ[layer.size()] = A[layer.size()] - lab;
-		
 		dW[layer.size()] = 1 / (double)m * dZ[layer.size()] * A[layer.size() - 1].T();
 		db[layer.size()] = 1 / (double)m * dZ[layer.size()].sum("rows");
-		end = std::chrono::steady_clock::now();
-		std::cout << "one layer back prop time = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 		for (int i = layer.size() - 1; i > 0; i--) {
 
 			if (activation) {
@@ -700,24 +702,18 @@ void nugget::train(const mat& Data, const mat& labels, int it, std::string activ
 			dZ[0] = this->weight[1].T() * dZ[1] ^ ReLuPr(Z[0]);
 
 		}
-
 		//std::cout << "mk3\n\n";
 		dW[0] = 1 / (double)m * dZ[0] * data.T();
-		//std::cout << "mk4\n\n";
-		
+		//std::cout << "mk4\n\n"
 		db[0] = 1 / (double)m * dZ[0].sum("rows");
-		end2 = std::chrono::steady_clock::now();
-		std::cout << "total back prop time = " << std::chrono::duration_cast<std::chrono::milliseconds>(end2 - begin).count() << "[ms]" << std::endl;
-		begin = std::chrono::steady_clock::now();
+
 		for (int i = 0; i < this->layer.size() + 1; i++) {
 			
 			this->weight[i] = weight[i] - alpha * dW[i];
 			
 			this->bias[i] = bias[i] - alpha * db[i];
 		}
-		end = std::chrono::steady_clock::now();
-		std::cout << "updating weights = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
-		if (epoch % 10 == 0) {
+				if (epoch % 10 == 0) {
 			std::cout << "Epoch: " << epoch << "\n";
 			accuracy(A[layer.size()], lab);
 

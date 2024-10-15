@@ -138,27 +138,34 @@ __global__ void mat_broad_div_row_K(double* A, double* B, double* C, int cols, i
 
 __global__ void mat_sum_col_K(double* A, double* C, int cols, int rows) {//CUDA kernel for matrix sum along columns
 
-	int row = blockIdx.y * blockDim.y + threadIdx.y;
-	int col = blockIdx.x * blockDim.x + threadIdx.x;
-	double temp_sum=0;
-	if (row < rows && col < cols) {
-		for (int i = 0; i < rows; i++) {
-			temp_sum += A[i * cols + col];
+	const unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
+	const unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
+	for (int s = 1; s < rows; s *= 2) {
+		unsigned int indx = row * s * 2;
+		if (indx + s < rows && col < cols){
+			A[indx*cols + col] += A[(indx+s)*cols + col];
 		}
-		C[col] = temp_sum;
 	}
+	if (row == 0 && col < cols) {
+		C[col]=A[col];
+	}
+
 }
 
 __global__ void mat_sum_row_K(double* A, double* C, int cols, int rows) {//CUDA kernel for matrix sum along rows
 
-	int row = blockIdx.y * blockDim.y + threadIdx.y;
-	int col = blockIdx.x * blockDim.x + threadIdx.x;
-	double temp_sum = 0;
-	if (row < rows && col < cols) {
-		for (int i = 0; i < cols; i++) {
-			temp_sum += A[row * cols + i];
+	const unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
+	const unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+	for (int s = 1; s < cols; s *= 2) {
+		unsigned int indx = col * s * 2;
+		if (indx + s < cols && row < rows){
+			A[row*cols + indx] += A[row*cols + indx + s];
 		}
-		C[row] = temp_sum;
+
+	}
+	if (col == 0 && row < rows) {
+		C[row]=A[row*cols];
 	}
 }
 
@@ -322,30 +329,32 @@ void matscal(int a, double b, const double* A, double* C, int arows, int acols) 
 	case 0:
 		cudaMallocManaged(&c_C, arows * acols * sizeof(double));
 		mat_scal_mult_K << <grid, block >> > (b, c_A, c_C, acols, arows);
-		cudaDeviceSynchronize();
 		cudaMemcpy(C, c_C, arows * acols * sizeof(double), cudaMemcpyDeviceToHost);
 		break;
 	case 1:
 		cudaMallocManaged(&c_C, arows * acols * sizeof(double));
 		mat_scal_div_K << <grid, block >> > (b, c_A, c_C, acols, arows);
-		cudaDeviceSynchronize();
 		cudaMemcpy(C, c_C, arows * acols * sizeof(double), cudaMemcpyDeviceToHost);
 		break;
 	case 2:
 		cudaMallocManaged(&c_C, acols * sizeof(double));
 		mat_sum_col_K << <grid, block >> > (c_A, c_C, acols, arows);
-		cudaDeviceSynchronize();
 		cudaMemcpy(C, c_C, acols * sizeof(double), cudaMemcpyDeviceToHost);
 		break;
 	case 3:
 		cudaMallocManaged(&c_C, arows * sizeof(double));
 		mat_sum_row_K << <grid, block >> > (c_A, c_C, acols, arows);
-		cudaDeviceSynchronize();
 		cudaMemcpy(C, c_C, arows * sizeof(double), cudaMemcpyDeviceToHost);
 		break;
 	}
+	// check for error
+	cudaError_t error = cudaGetLastError();
+	if(error != cudaSuccess)
+	{
+		// print the CUDA error message and exit
+		printf("CUDA error: %s\n", cudaGetErrorString(error));
 
-	cudaMemcpy(C, c_C, arows * acols * sizeof(double), cudaMemcpyDeviceToHost);
+	}
 	cudaFree(c_A);
 	cudaFree(c_C);
 }
