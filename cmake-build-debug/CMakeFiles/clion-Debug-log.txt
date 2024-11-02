@@ -1,4 +1,4 @@
-/home/matthewjouffray/.local/share/flatpak/app/com.jetbrains.CLion/x86_64/stable/dd1e8634791e197b2f6dc4f06720394b4007e2f1c79c6cdf59f3fc8445ecdf0e/files/extra/clion/bin/cmake/linux/x64/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/home/matthewjouffray/.local/share/flatpak/app/com.jetbrains.CLion/x86_64/stable/dd1e8634791e197b2f6dc4f06720394b4007e2f1c79c6cdf59f3fc8445ecdf0e/files/extra/clion/bin/ninja/linux/x64/ninja -G Ninja -S /home/matthewjouffray/Projects/Code/Astatine -B /home/matthewjouffray/Projects/Code/Astatine/cmake-build-debug
+/usr/local/clion-2024.2.3/bin/cmake/linux/x64/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/usr/local/clion-2024.2.3/bin/ninja/linux/x64/ninja -G Ninja -S /home/matthewjouffray/Projects/Code/Astatine -B /home/matthewjouffray/Projects/Code/Astatine/cmake-build-debug
 -- Configuring done (0.0s)
 -- Generating done (0.0s)
 -- Build files have been written to: /home/matthewjouffray/Projects/Code/Astatine/cmake-build-debug

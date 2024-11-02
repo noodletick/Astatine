@@ -2,7 +2,6 @@
 //
 
 #include <iostream>
-#include "MATRIX.cuh"
 #include "NUGGET.cuh"
 #include <fstream>
 #include <vector>
@@ -14,11 +13,11 @@ int main()
 //  ---------- Reading training data --------------
     std::ifstream Data, Labels;
 
-    std::vector<unsigned int> labels, temp_dat;
-    std::vector<std::vector<unsigned int>> data;
-    unsigned int temp1;
+    std::vector<float> labels, temp_dat;
+    std::vector<std::vector<float>> data;
+    float temp1;
     //unsigned int count;
-    double temp;
+    float temp;
 
     Labels.open("labels.dat");
 
@@ -35,7 +34,7 @@ int main()
     Data.open("data.dat");
 
     temp_dat.resize(784);
-
+    std::cout << "mk1\n";
     /* bool tick = true;*/
     //count = 0;
     while (true) {
@@ -55,7 +54,7 @@ int main()
         if (Data.eof()) { break; }
     }
     Data.close();
-
+    std::cout << "mk2\n";
     labels.pop_back();
     data.pop_back();
 
@@ -67,8 +66,8 @@ int main()
 
     Labels.open("test_labels.dat");
 
-    std::vector<unsigned int> Tlabels;
-    std::vector<std::vector<unsigned int>> Tdata;
+    std::vector<float> Tlabels;
+    std::vector<std::vector<float>> Tdata;
 
     while (true) {
 
@@ -103,7 +102,7 @@ int main()
         if (Data.eof()) { break; }
     }
     Data.close();
-
+    std::cout << "mk3\n";
     Tlabels.pop_back();
     Tdata.pop_back();
 
@@ -118,10 +117,10 @@ int main()
 
     //  ---------- Training neural network --------------
 
-   
+    std::cout << "mk4\n";
     std::cout << "Training.\n\n";
-    test_nug.train(data, labels, 1200, "ReLu", "softmax", 0.1, "TestSave.txt");
-
+    //test_nug.train(data, labels, 1200, "ReLu", "softmax", 0.08, "TestSave.txt");
+    test_nug.train(data, labels, 1200, "ReLu", "softmax", 0.08, "TestSave.txt");
    //sigmoid
 
     //  ---------- Running test data --------------

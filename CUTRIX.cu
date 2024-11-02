@@ -169,6 +169,33 @@ __global__ void mat_sum_row_K(double* A, double* C, int cols, int rows) {//CUDA 
 	}
 }
 
+__global__ void mat_transpose_K(double* A, double* C, int cols, int rows) {
+	// Calculate row and column index in the output matrix
+	constexpr unsigned int TILE_WIDTH = 16;
+	int col = blockIdx.x * TILE_WIDTH + threadIdx.x;
+	int row = blockIdx.y * TILE_WIDTH + threadIdx.y;
+
+	// Allocate shared memory for the tile
+	__shared__ double tile[TILE_WIDTH][TILE_WIDTH + 1]; // +1 to avoid bank conflicts
+
+	// Load data into shared memory
+	if (row < rows && col < cols) {
+		tile[threadIdx.y][threadIdx.x] = A[row * cols + col];
+	}
+
+	// Synchronize to ensure all threads have loaded their data
+	__syncthreads();
+
+	// Calculate transposed indices
+	int transposed_row = blockIdx.x * TILE_WIDTH + threadIdx.y;
+	int transposed_col = blockIdx.y * TILE_WIDTH + threadIdx.x;
+
+	// Write the transposed data to the output matrix
+	if (transposed_row < cols && transposed_col < rows) {
+		C[transposed_row * rows + transposed_col] = tile[threadIdx.x][threadIdx.y];
+	}
+}
+
 __global__ void mat_scal_mult_K(double a, double* A, double* C, int cols, int rows) {//CUDA kernel for scalar multiplication
 
 	int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -347,6 +374,30 @@ void matscal(int a, double b, const double* A, double* C, int arows, int acols) 
 		cudaMemcpy(C, c_C, arows * sizeof(double), cudaMemcpyDeviceToHost);
 		break;
 	}
+	// check for error
+	cudaError_t error = cudaGetLastError();
+	if(error != cudaSuccess)
+	{
+		// print the CUDA error message and exit
+		printf("CUDA error: %s\n", cudaGetErrorString(error));
+
+	}
+	cudaFree(c_A);
+	cudaFree(c_C);
+}
+
+void mat_indx(const double* A, double* C, int arows, int acols) {//CUDA wrapper function for scalar operations
+	//only used to call the transpose kernel for now
+	double* c_A, * c_C;
+	constexpr unsigned int WIDTH = 16;
+	cudaMallocManaged(&c_A, arows * acols * sizeof(double));
+	cudaMallocManaged(&c_C, arows * acols * sizeof(double));
+	cudaMemcpy(c_A, A, arows * acols * sizeof(double), cudaMemcpyHostToDevice);
+	dim3 grid((acols+WIDTH-1) / WIDTH, (arows+WIDTH-1) / WIDTH, 1);
+	dim3 block(WIDTH, WIDTH, 1);
+	mat_transpose_K << <grid, block >> > (c_A, c_C, acols, arows);
+	cudaMemcpy(C, c_C, arows * acols * sizeof(double), cudaMemcpyDeviceToHost);
+
 	// check for error
 	cudaError_t error = cudaGetLastError();
 	if(error != cudaSuccess)
