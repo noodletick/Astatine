@@ -9,7 +9,8 @@ if (OPENMP_FOUND)
     set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
 add_executable(Astatine nugget.cu
-        NUGGET.cuh)
+        NUGGET.cuh
+        test.cu)
 
 set_target_properties(Astatine PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON)
