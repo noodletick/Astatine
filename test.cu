@@ -6,7 +6,6 @@
 #include <fstream>
 #include <vector>
 #include <string>
-#include <omp.h>
 
 int main()
 {
@@ -115,9 +114,9 @@ int main()
     //  ---------- Training neural network --------------
 
     std::cout << "Training.\n\n";
-    //test_nug.train(data, labels, 1200, "ReLu", "softmax", 0.08, "TestSave.txt");
-    test_nug.train(data, labels, 1200, "ReLu", "softmax", 0.02, "TestSave.txt");
-   //sigmoid
+    //test_nug.train(data, labels, 20, "ReLu", "softmax", 0.02);
+    test_nug.train(data, labels, 20, "ReLu", "softmax", 0.02, "TestSave.txt");
+    //sigmoid
 
     //  ---------- Running test data --------------
     std::cout << "Testing on new data.\n\n";

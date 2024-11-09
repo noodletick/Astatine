@@ -1,14 +1,8 @@
 #pragma once
-#include <iostream>
 #include "MATRIX.cuh"
 #include <vector>
 #include <string>
-#include <random>
 #include <iomanip>
-#include <math.h>
-#include <omp.h>
-#include <fstream>
-#include <chrono>
 
 #ifndef NUG_H
 #define NUG_H
@@ -43,7 +37,7 @@ public:
 	nugget(std::string read); // initialize using a save file of a previously trained NN
 	// -- methods --
 
-	void train(const mat<float>& data, const mat<float>& labels, int it, std::string activ, std::string o_activ, float alpha);
+	void train(const mat<float>& data, const mat<float>& labels, int it, const std::string& activ, const std::string& o_activ, float alpha);
 	void train(const mat<float>& data, const mat<float>& labels, int it, std::string activ, std::string o_activ, float alpha, std::string);
 	void run(const mat<float>& data, const mat<float>& labels);
 	void run(const mat<float>& data);

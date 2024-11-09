@@ -400,150 +400,13 @@ void nugget::save(std::string filename) {
 }
 
 
-void nugget::train(const mat<float>& raw_data, const mat<float>& labels, int it, std::string activ, std::string o_activ, float alpha) {
-
-	int m; // size of data sample
-	int activation;
-
-	// seting condition for selected activation function
-	if (activ == "ReLu") {
-		activation = 0;
-		this->activF = 0;
-	}
-	else if (activ == "sigmoid") {
-		activation = 1;
-		this->activF = 1;
-	}
-	else {
-		std::cout << "invalid activation function argument for training function, please select either 'ReLu' or 'sigmoid'." << std::endl;
-		exit(0);
-	}
-	// normalize and process input data
-
-	mat<float> data = raw_data;
-	if (data.rows() == this->Ninput) {
-		m = data.cols();
-		data = data / data.max();
-	}
-	else if (data.cols() == this->Ninput) {
-		data = data.T();
-		m = data.cols();
-		data = data / data.max();
-	}
-	else {
-		std::cout << "Dimensions of the data matrix are "<<data.rows()<<" by "<<data.cols()<<", at least one of those dimensions should match the specificed input layer size for this nugget which is"<< this->Ninput <<"." << std::endl;
-		exit(0);
-	}
-
-
-	// 1-hot labels
-
-	mat<float> lab = OneHT(labels);
-
-	std::vector<mat<float>> A, Z, dW, dZ, db;
-	A.resize(layer.size() + 1);
-	Z.resize(layer.size() + 1);
-	dW.resize(layer.size() + 1);
-	dZ.resize(layer.size() + 1);
-	db.resize(layer.size() + 1);
-	int epoch = 0;
-
-	while (epoch < it) {
-		// forward propagation
-
-		Z[0] = this->weight[0] * data + this->bias[0];
-		if (activation) {
-
-			A[0] = sigmoid(Z[0]);
-		}
-		else {
-
-			A[0] = ReLu(Z[0]);
-
-		}
-
-
-		for (int i = 1; i < this->layer.size(); i++) {
-			Z[i] = this->weight[i] * A[i - 1] + this->bias[i];
-
-			if (activation) {
-
-				A[i] = sigmoid(Z[i]);
-			}
-			else {
-
-				A[i] = ReLu(Z[i]);
-
-			}
-
-		}
-
-		Z[layer.size()] = this->weight[layer.size()] * A[layer.size() - 1] + this->bias[layer.size()];
-
-		A[layer.size()] = softmax(Z[layer.size()]); // output layer
-
-		// back propagation
-
-		dZ[layer.size()] = A[layer.size()] - lab;
-
-		dW[layer.size()] = 1 / (float)m * dZ[layer.size()] * A[layer.size() - 1].T();
-		db[layer.size()] = 1 / (float)m * dZ[layer.size()].sum("rows");
-
-		for (int i = layer.size() - 1; i > 0; i--) {
-
-			if (activation) {
-
-				dZ[i] = this->weight[i + 1].T() * dZ[i + 1] ^ sigmoidPr(Z[i]);
-			}
-			else {
-
-				dZ[i] = this->weight[i + 1].T() * dZ[i + 1] ^ ReLuPr(Z[i]);
-
-			}
-
-
-			//std::cout << "mk3\n\n";
-			dW[i] = 1 / (float)m * dZ[i] * A[i-1].T();
-			//std::cout << "mk4\n\n";
-			db[i] = 1 / (float)m * dZ[i].sum("rows");
-		}
-
-		if (activation) {
-
-			dZ[0] = this->weight[1].T() * dZ[1] ^ sigmoidPr(Z[0]);
-		}
-		else {
-
-			dZ[0] = this->weight[1].T() * dZ[1] ^ ReLuPr(Z[0]);
-
-		}
-
-		dW[0] = 1 / (float)m * dZ[0] * data.T();
-		db[0] = 1 / (float)m * dZ[0].sum("rows");
-
-		for (int i = 0; i < this->layer.size() + 1; i++) {
-
-			this->weight[i] = weight[i] - alpha * dW[i];
-
-			this->bias[i] = bias[i] - alpha * db[i];
-		}
-
-		if (epoch % 10 == 0) {
-			std::cout << "Epoch: " << epoch << "\n";
-			accuracy(A[layer.size()], lab);
-
-
-		}
-
-		epoch++;
-	}
-
-	std::cout << "Saving model. " << epoch << "\n";
-	save();
-
-}
-
-void nugget::train(const mat<float>& raw_data, const mat<float>& labels, int it, std::string activ, std::string o_activ, float alpha, std::string filename) {
+void nugget::train(const mat<float>& raw_data,
+	const mat<float>& labels,
+	int it,
+	const std::string& activ,
+	const std::string& o_activ,
+	float alpha)
+{
 	int m; // size of data sample
 	int activation;
 
@@ -679,6 +542,17 @@ void nugget::train(const mat<float>& raw_data, const mat<float>& labels, int it,
 		epoch++;
 	}
 
+}
+
+void nugget::train(const mat<float>& raw_data,
+	const mat<float>& labels,
+	int it,
+	std::string activ,
+	std::string o_activ,
+	float alpha,
+	std::string filename)
+{
+	nugget::train(raw_data, labels, it, activ, o_activ, alpha);
 	std::cout << "Saving model. "<< "\n";
 	save(filename);
 
