@@ -400,7 +400,7 @@ void nugget::save(std::string filename) {
 }
 
 
-void nugget::train(const mat<float>& Data, const mat<float>& labels, int it, std::string activ, std::string o_activ, float alpha) {
+void nugget::train(const mat<float>& raw_data, const mat<float>& labels, int it, std::string activ, std::string o_activ, float alpha) {
 
 	int m; // size of data sample
 	int activation;
@@ -420,7 +420,7 @@ void nugget::train(const mat<float>& Data, const mat<float>& labels, int it, std
 	}
 	// normalize and process input data
 
-	mat<float> data = Data;
+	mat<float> data = raw_data;
 	if (data.rows() == this->Ninput) {
 		m = data.cols();
 		data = data / data.max();
@@ -543,7 +543,7 @@ void nugget::train(const mat<float>& Data, const mat<float>& labels, int it, std
 
 }
 
-void nugget::train(const mat<float>& Data, const mat<float>& labels, int it, std::string activ, std::string o_activ, float alpha, std::string filename) {
+void nugget::train(const mat<float>& raw_data, const mat<float>& labels, int it, std::string activ, std::string o_activ, float alpha, std::string filename) {
 	int m; // size of data sample
 	int activation;
 
@@ -562,7 +562,7 @@ void nugget::train(const mat<float>& Data, const mat<float>& labels, int it, std
 	}
 	// normalize and process input data
 
-	mat<float> data = Data;
+	mat<float> data = raw_data;
 	if (data.rows() == this->Ninput) {
 		m = data.cols();
 		data = data / data.max();
@@ -684,12 +684,12 @@ void nugget::train(const mat<float>& Data, const mat<float>& labels, int it, std
 
 }
 
-void nugget::run(const mat<float>& Data, const mat<float>& labels) {
+void nugget::run(const mat<float>& raw_data, const mat<float>& labels) {
 	// runing the model is just the forward propagation step with a new dataset. This function takes labels and performs an accuracy calculation at the end.
 
 	// normalize and process input data
 
-	mat<float> data = Data;
+	mat<float> data = raw_data;
 	if (data.rows() == this->Ninput) {
 		data = data / data.max();
 	}
@@ -750,10 +750,10 @@ void nugget::run(const mat<float>& Data, const mat<float>& labels) {
 
 }
 
-void nugget::run(const mat<float>& Data) {
+void nugget::run(const mat<float>& raw_data) {
 	// runing the model is just the forward propagation step with a new dataset. This function takes labels and performs an accuracy calculation at the end.
 
-	mat<float> data = Data;
+	mat<float> data = raw_data;
 	if (data.rows() == this->Ninput) {
 
 		data = data / data.max();
