@@ -134,7 +134,6 @@ nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, std::string
 	else {
 		this->weight[0] = xav_norm(hid_layers[0], inputs, inputs, hid_layers[0]);
 	}
-
 	mat<float> fstb("zeros", hid_layers[0], 1);
 	/*std::cout << "mk3\n\n";*/
 
@@ -167,7 +166,6 @@ nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, std::string
 		this->weight[hid_layers.size()] = xav_norm(outputs, hid_layers[hid_layers.size() - 1],
 		                                           hid_layers[hid_layers.size() - 1], outputs);
 	}
-
 	mat<float> lastb("zeros", outputs, 1);
 
 	this->bias[hid_layers.size()] = (lastb);
@@ -272,7 +270,6 @@ mat<float> nugget::sigmoidPr(mat<float> a) {
 }
 
 mat<float> nugget::softmax(mat<float> A) {
-
 	mat<float> B = A.xp() / A.xp().sum("cols");
 	return B;
 }
