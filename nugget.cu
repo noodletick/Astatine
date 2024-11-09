@@ -129,10 +129,10 @@ nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, std::string
 	this->bias.resize(hid_layers.size() + 1);
 
 	if (uni) {
-		this->weight[0] = xav_uni(hid_layers[0], inputs, inputs, outputs);
+		this->weight[0] = xav_uni(hid_layers[0], inputs, inputs, hid_layers[0]);
 	}
 	else {
-		this->weight[0] = xav_norm(hid_layers[0], inputs, inputs, outputs);
+		this->weight[0] = xav_norm(hid_layers[0], inputs, inputs, hid_layers[0]);
 	}
 
 	mat<float> fstb("zeros", hid_layers[0], 1);
@@ -143,10 +143,16 @@ nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, std::string
 	// creating weight and bias matrix for each hidden layer past layer one
 	for (int i = 1; i < hid_layers.size(); i++) {
 		if (uni) {
-			this->weight[i] = xav_uni(hid_layers[i], hid_layers[i - 1], inputs, outputs);
+			this->weight[i] = xav_uni(hid_layers[i],
+				hid_layers[i - 1],
+				hid_layers[i - 1],
+				hid_layers[i]);
 		}
 		else {
-			this->weight[i] = xav_norm(hid_layers[i], hid_layers[i - 1], inputs, outputs);
+			this->weight[i] = xav_norm(hid_layers[i],
+				hid_layers[i - 1],
+				hid_layers[i - 1],
+				hid_layers[i]);
 		}
 		mat<float> btemp("zeros", hid_layers[i], 1);
 		this->bias[i] = btemp;
@@ -154,10 +160,12 @@ nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, std::string
 	}
 	// weights and bias to go from the last hidden layer to the output layer
 	if (uni) {
-		this->weight[hid_layers.size()] = xav_uni(outputs, hid_layers[hid_layers.size() - 1], inputs, outputs);
+		this->weight[hid_layers.size()] = xav_uni(outputs, hid_layers[hid_layers.size() - 1],
+		                                          hid_layers[hid_layers.size() - 1], outputs);
 	}
 	else {
-		this->weight[hid_layers.size()] = xav_norm(outputs, hid_layers[hid_layers.size() - 1], inputs, outputs);
+		this->weight[hid_layers.size()] = xav_norm(outputs, hid_layers[hid_layers.size() - 1],
+		                                           hid_layers[hid_layers.size() - 1], outputs);
 	}
 
 	mat<float> lastb("zeros", outputs, 1);
