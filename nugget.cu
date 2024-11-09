@@ -178,6 +178,27 @@ nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, const std::
 
 }
 
+mat<float> nugget::normalize(const mat<float>& a, const unsigned int& inputs) {
+
+	mat<float> normalized = a;
+	if (normalized.rows() == inputs) {
+		unsigned int m = normalized.cols();
+		normalized  = normalized / normalized.max();
+	}
+	else if (normalized.cols() == inputs) {
+		normalized = normalized.T();
+		unsigned int m = normalized.cols();
+		normalized  = normalized / normalized.max();
+	}
+	else {
+		std::cout << "Dimensions of the data matrix are " << normalized.rows() << " by " << normalized.cols() <<
+				", at least one of those dimensions should match the specified input layer size for this nugget which is"
+				<< inputs << "." << std::endl;
+		exit(0);
+	}
+	return normalized;
+}
+
 mat<float> nugget::xav_uni(int sizerow, int sizecol, int inputs, int outputs) {
 	//uniform xavier initialization
 
@@ -436,25 +457,9 @@ void nugget::train(const mat<float>& raw_data,
 		exit(0);
 	}
 	// normalize and process input data
-
-	mat<float> data = raw_data;
-	if (data.rows() == this->Ninput) {
-		m = data.cols();
-		data = data / data.max();
-	}
-	else if (data.cols() == this->Ninput) {
-		data = data.T();
-		m = data.cols();
-		data = data / data.max();
-	}
-	else {
-		std::cout << "Dimensions of the data matrix are " << data.rows() << " by " << data.cols() << ", at least one of those dimensions should match the specificed input layer size for this nugget which is" << this->Ninput << "." << std::endl;
-		exit(0);
-	}
-
+	mat<float> data = normalize(raw_data, Ninput);
 
 	// 1-hot labels
-
 	mat lab = OneHT(labels, Noutput);
 
 	std::vector<mat<float>> A, Z, dW, dZ, db;
@@ -465,8 +470,9 @@ void nugget::train(const mat<float>& raw_data,
 	db.resize(layer.size() + 1);
 	int epoch = 0;
 
-	while (epoch < it) {
-		// forward propagation
+	while (epoch < it) {//training loop
+
+		// ------------------ forward propagation --------------------------
 		std::chrono::steady_clock::time_point epoch_start = std::chrono::steady_clock::now();
 
 		Z[0] = this->weight[0] * data + this->bias[0];
@@ -493,14 +499,11 @@ void nugget::train(const mat<float>& raw_data,
 			}
 
 		}
-		/*std::cout << "W3 is "<< this->weight[layer.size()].rows() << " by " << this->weight[layer.size()].cols() <<"\n\n";
-		std::cout << "A2 is " << A[layer.size() - 1].rows() << " by " << A[layer.size() - 1].cols() << "\n\n";
-		std::cout << "b3 is " << this->bias[layer.size()].rows() << " by " << this->bias[layer.size()].cols() << "\n\n";*/
 
 		Z[layer.size()] = this->weight[layer.size()] * A[layer.size() - 1] + this->bias[layer.size()];
-
 		A[layer.size()] = softmax(Z[layer.size()]); // output layer
-				// back propagation
+
+		//----------------------- back propagation ---------------------------
 
 		dZ[layer.size()] = A[layer.size()] - lab;
 		dW[layer.size()] = 1 / (float)m * dZ[layer.size()] * A[layer.size() - 1].T();

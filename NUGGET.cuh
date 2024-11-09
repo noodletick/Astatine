@@ -27,7 +27,7 @@ private:
 	static void accuracy(mat<float> A, mat<float> y);
 	void save(const std::string&);
 	void save();
-
+	static mat<float> normalize(const mat<float>& a, const unsigned int& inputs);
 public:
 	// -- constructors --
 	nugget(int inputs, int outputs, std::vector<int> hid_layers, const std::string& init);
