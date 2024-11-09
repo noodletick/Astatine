@@ -9,6 +9,13 @@
 #include <chrono>
 
 nugget::nugget(const std::string& read) {
+	// constructor to initialize the neural network using a save file
+	/*
+	 *----------------------------------------------------------------------------------------------------------
+	 * arguments:
+	 * read: path and name (or name if in working directory) to save file
+	 * ---------------------------------------------------------------------------------------------------------
+	 */
 	std::vector<float> tempvec;
 	std::vector<std::vector<float>> tempmat;
 	std::ifstream savefile;
@@ -37,7 +44,7 @@ nugget::nugget(const std::string& read) {
 		}
 		tempmat[i] = tempvec;
 	}
-	this->weight.push_back(tempmat);
+	this->weight.emplace_back(tempmat);
 	tempvec.clear();
 	tempmat.clear();
 
@@ -51,7 +58,7 @@ nugget::nugget(const std::string& read) {
 			}
 			tempmat[i] = tempvec;
 		}
-		this->weight.push_back(tempmat);
+		this->weight.emplace_back(tempmat);
 		tempvec.clear();
 		tempmat.clear();
 	}
@@ -65,7 +72,7 @@ nugget::nugget(const std::string& read) {
 		}
 		tempmat[i] = tempvec;
 	}
-	this->weight.push_back(tempmat);
+	this->weight.emplace_back(tempmat);
 	tempvec.clear();
 	tempmat.clear();
 
@@ -75,7 +82,7 @@ nugget::nugget(const std::string& read) {
 	for (int i = 0; i < this->layer[0]; i++) {
 		savefile >> tempvec[i];
 	}
-	this->bias.push_back(tempvec);
+	this->bias.emplace_back(tempvec);
 	tempvec.clear();
 
 
@@ -86,7 +93,7 @@ nugget::nugget(const std::string& read) {
 			savefile >> tempvec[i];
 
 		}
-		this->bias.push_back(tempvec);
+		this->bias.emplace_back(tempvec);
 		tempvec.clear();
 
 	}
@@ -95,7 +102,7 @@ nugget::nugget(const std::string& read) {
 	for (int i = 0; i < this->Noutput; i++) {
 		savefile >> tempvec[i];
 	}
-	this->bias.push_back(tempvec);
+	this->bias.emplace_back(tempvec);
 	tempvec.clear();
 
 	savefile.close();
@@ -135,10 +142,9 @@ nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, const std::
 		this->weight[0] = xav_norm(hid_layers[0], inputs, inputs, hid_layers[0]);
 	}
 	mat<float> fstb("zeros", hid_layers[0], 1);
-	/*std::cout << "mk3\n\n";*/
 
 	this -> bias[0] = fstb;
-	/*std::cout << "mk4\n\n";*/
+
 	// creating weight and bias matrix for each hidden layer past layer one
 	for (int i = 1; i < hid_layers.size(); i++) {
 		if (uni) {
@@ -172,22 +178,25 @@ nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, const std::
 
 }
 
-mat<float> nugget::xav_uni(int sizerow, int sizecol, int inputs, int outputs) { //uniform xavier initialization
+mat<float> nugget::xav_uni(int sizerow, int sizecol, int inputs, int outputs) {
+	//uniform xavier initialization
 
 	float xavier = std::sqrt(6/(static_cast<float>(inputs) + static_cast<float>(outputs)));
 	mat W1("rand", -xavier, xavier, sizerow, sizecol);
 	return W1;
 }
 
-mat<float> nugget::xav_norm(int sizerow, int sizecol, int inputs, int outputs) { //normal xavier initialization
+mat<float> nugget::xav_norm(int sizerow, int sizecol, int inputs, int outputs) {
+	//normal xavier initialization
 
 	float xavier = std::sqrt(2 / (static_cast<float>(inputs) + static_cast<float>(outputs)));
 	mat<float> W1("randN", 0, xavier, sizerow, sizecol);
 	return W1;
 }
 
-mat<float> nugget::OneHT(mat<float> y) {
-	mat<float> onehot("zeros", 10, y.rows());
+mat<float> nugget::OneHT(mat<float> y, const unsigned int& m) {
+	//transforms label 1D array into 2D matrix of depth m
+	mat<float> onehot("zeros", m, y.rows());
 	for (int i = 0; i < y.rows(); i++) {
 		onehot(static_cast<int>(y(i, 0)), i) = 1;
 	}
@@ -196,9 +205,9 @@ mat<float> nugget::OneHT(mat<float> y) {
 }
 
 mat<float> nugget::ReLu(mat<float> a) {
-
+	//applies the ReLu activation function on all elements of matrix a
 	mat<float> temp = a;
-#pragma omp parallel for
+	#pragma omp parallel for
 	for (int i = 0; i < a.rows(); i++) {
 		for (int j = 0; j < a.cols(); j++) {
 			if (a(i, j) <= 0) {
@@ -214,9 +223,9 @@ mat<float> nugget::ReLu(mat<float> a) {
 }
 
 mat<float> nugget::ReLuPr(mat<float> a) {
-
+	//applies teh derivative of the ReLu activation function to every element in matrix a
 	mat<float> temp = a;
-#pragma omp parallel for
+	#pragma omp parallel for
 	for (int i = 0; i < a.rows(); i++) {
 		for (int j = 0; j < a.cols(); j++) {
 			if (a(i, j) <= 0) {
@@ -232,14 +241,15 @@ mat<float> nugget::ReLuPr(mat<float> a) {
 }
 
 float sig(float a) {
+	//returns the sigmoid of a
 	float b = 1 / (1 + (std::exp(-a)));
 	return b;
 }
 
 mat<float> nugget::sigmoid(mat<float> a) {
-
+	//applies the sigmoid activation function to every element of matrix a
 	mat<float> temp = a;
-#pragma omp parallel for
+	#pragma omp parallel for
 	for (int i = 0; i < a.rows(); i++) {
 		for (int j = 0; j < a.cols(); j++) {
 
@@ -253,7 +263,7 @@ mat<float> nugget::sigmoid(mat<float> a) {
 }
 
 mat<float> nugget::sigmoidPr(mat<float> a) {
-
+	//applies the derivative of the sigmoid function to every element of matrix a
 	mat<float> temp = a;
 #pragma omp parallel for
 	for (int i = 0; i < a.rows(); i++) {
@@ -269,13 +279,14 @@ mat<float> nugget::sigmoidPr(mat<float> a) {
 }
 
 mat<float> nugget::softmax(mat<float> A) {
+	//output layer activation function to normalize output and help calculate the loss function
 	mat<float> B = A.xp() / A.xp().sum("cols");
 	return B;
 }
 
 void nugget::accuracy(mat<float> A, mat<float> Y) {
+	//calculates the accuracy of the output compared to the labels
 	unsigned int m = A.cols();
-
 	float sum = 0;
 	float tempmax = 0;
 	int indxmax1 = -1;
@@ -303,6 +314,7 @@ void nugget::accuracy(mat<float> A, mat<float> Y) {
 }
 
 void nugget::save() {
+	//generic save function that writes all the neural net parameters to a default ascii file "save.nn"
 	char tab = 9;
 	std::ofstream savefile;
 	savefile.open("save.nn");
@@ -351,6 +363,7 @@ void nugget::save() {
 }
 
 void nugget::save(const std::string& filename) {
+	//overloaded save function that takes in a file as parameter
 	char tab = 9;
 	std::ofstream savefile;
 	savefile.open(filename);
@@ -442,7 +455,7 @@ void nugget::train(const mat<float>& raw_data,
 
 	// 1-hot labels
 
-	mat lab = OneHT(labels);
+	mat lab = OneHT(labels, Noutput);
 
 	std::vector<mat<float>> A, Z, dW, dZ, db;
 	A.resize(layer.size() + 1);
@@ -578,7 +591,7 @@ void nugget::run(const mat<float>& raw_data, const mat<float>& labels) {
 
 	// 1-hot labels
 
-	mat lab = OneHT(labels);
+	mat lab = OneHT(labels, Noutput);
 
 	std::vector<mat<float>> A, Z;
 	A.resize(layer.size() + 1);

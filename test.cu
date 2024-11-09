@@ -33,22 +33,17 @@ int main()
     Data.open("data.dat");
 
     temp_dat.resize(784);
-    /* bool tick = true;*/
-    //count = 0;
+
     while (true) {
         for (int i = 0; i < 784; i++) {
             Data >> temp;
             temp1 = temp;
             temp_dat[i] = temp1;
-            /*if (tick) {
-                std::cout << i+1 <<"    "<< temp_dat[i] << "\n";
-            }*/
+
         }
-        /*std::cout << count << "\n";
-        count++;*/
+
         data.push_back(temp_dat);
-        /*temp_dat.clear();*/
-        /*tick = false;*/
+
         if (Data.eof()) { break; }
     }
     Data.close();
@@ -80,22 +75,16 @@ int main()
 
     temp_dat.resize(784);
 
-    /* bool tick = true;*/
-    //count = 0;
     while (true) {
         for (int i = 0; i < 784; i++) {
             Data >> temp;
             temp1 = temp;
             temp_dat[i] = temp1;
-            /*if (tick) {
-                std::cout << i+1 <<"    "<< temp_dat[i] << "\n";
-            }*/
+
         }
-        /*std::cout << count << "\n";
-        count++;*/
+
         Tdata.push_back(temp_dat);
-        /*temp_dat.clear();*/
-        /*tick = false;*/
+
         if (Data.eof()) { break; }
     }
     Data.close();
@@ -131,14 +120,3 @@ int main()
     std::cout << "Testing on new data.\n\n";
     newnug.run(Tdata, Tlabels);
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started:
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
