@@ -1,14 +1,14 @@
+#include <cmath>
 #include <iostream>
 #include "NUGGET.cuh"
 #include <vector>
 #include <string>
 #include <random>
 #include <iomanip>
-#include <math.h>
 #include <fstream>
 #include <chrono>
 
-nugget::nugget(std::string read) {
+nugget::nugget(const std::string& read) {
 	std::vector<float> tempvec;
 	std::vector<std::vector<float>> tempmat;
 	std::ifstream savefile;
@@ -101,7 +101,7 @@ nugget::nugget(std::string read) {
 	savefile.close();
 }
 
-nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, std::string init) {
+nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, const std::string& init) {
 // constructor to initialize the neural network with specified shape
 	/*
 	 *----------------------------------------------------------------------------------------------------------
@@ -121,7 +121,7 @@ nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, std::string
 		std::cout << "invalid weight initialization constructor argument" << std::endl;
 		exit(0);
 	}
-
+	this->activF = -1; //placeholder value until the activation function is set in .train()
 	this->layer = hid_layers;
 	this->Ninput = inputs;
 	this->Noutput = outputs;
@@ -174,14 +174,14 @@ nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, std::string
 
 mat<float> nugget::xav_uni(int sizerow, int sizecol, int inputs, int outputs) { //uniform xavier initialization
 
-	float xavier = sqrt(6/((float)inputs + (float)outputs));
+	float xavier = std::sqrt(6/(static_cast<float>(inputs) + static_cast<float>(outputs)));
 	mat W1("rand", -xavier, xavier, sizerow, sizecol);
 	return W1;
 }
 
 mat<float> nugget::xav_norm(int sizerow, int sizecol, int inputs, int outputs) { //normal xavier initialization
 
-	float xavier = sqrt(2 / ((float)inputs + (float)outputs));
+	float xavier = std::sqrt(2 / (static_cast<float>(inputs) + static_cast<float>(outputs)));
 	mat<float> W1("randN", 0, xavier, sizerow, sizecol);
 	return W1;
 }
@@ -189,7 +189,7 @@ mat<float> nugget::xav_norm(int sizerow, int sizecol, int inputs, int outputs) {
 mat<float> nugget::OneHT(mat<float> y) {
 	mat<float> onehot("zeros", 10, y.rows());
 	for (int i = 0; i < y.rows(); i++) {
-		onehot(y(i, 0), i) = 1;
+		onehot(static_cast<int>(y(i, 0)), i) = 1;
 	}
 
 	return onehot;
@@ -232,8 +232,7 @@ mat<float> nugget::ReLuPr(mat<float> a) {
 }
 
 float sig(float a) {
-	float b;
-	b = 1 / (1 + (exp(-a)));
+	float b = 1 / (1 + (std::exp(-a)));
 	return b;
 }
 
@@ -275,12 +274,12 @@ mat<float> nugget::softmax(mat<float> A) {
 }
 
 void nugget::accuracy(mat<float> A, mat<float> Y) {
-	int m = A.cols();
+	unsigned int m = A.cols();
 
-	int sum = 0;
-	float accuracy;
+	float sum = 0;
 	float tempmax = 0;
-	int indxmax1, indxmax2;
+	int indxmax1 = -1;
+	int indxmax2 = 0;
 	//#pragma omp parallel for
 	for (int i = 0; i < A.cols(); i++) {
 		tempmax = 0;
@@ -299,7 +298,7 @@ void nugget::accuracy(mat<float> A, mat<float> Y) {
 
 		}
 	}
-	accuracy = sum / (float)m;
+	float accuracy = sum / static_cast<float>(m);
 	std::cout << "accuracy is " << accuracy << "\n\n";
 }
 
@@ -336,22 +335,22 @@ void nugget::save() {
 			}
 		}
 	}
-	for (int i = 0; i < this->bias.size(); i++) { //Write weight matrices
+	for (auto & bia : this->bias) { //Write weight matrices
 
 		savefile << "\n";
 
-		for (int j = 0; j < this->bias[i].rows(); j++) {
+		for (int j = 0; j < bia.rows(); j++) {
 			if (j != 0) {
 				savefile << tab;
 			}
-			savefile << this->bias[i](j, 0);
+			savefile << bia(j, 0);
 
 		}
 	}
 	savefile.close();
 }
 
-void nugget::save(std::string filename) {
+void nugget::save(const std::string& filename) {
 	char tab = 9;
 	std::ofstream savefile;
 	savefile.open(filename);
@@ -384,15 +383,15 @@ void nugget::save(std::string filename) {
 			}
 		}
 	}
-	for (int i = 0; i < this->bias.size(); i++) { //Write weight matrices
+	for (auto & bia : this->bias) { //Write weight matrices
 
 		savefile << "\n";
 
-		for (int j = 0; j < this->bias[i].rows(); j++) {
+		for (int j = 0; j < bia.rows(); j++) {
 			if (j != 0) {
 				savefile << tab;
 			}
-			savefile << this->bias[i](j, 0);
+			savefile << bia(j, 0);
 
 		}
 	}
@@ -407,7 +406,7 @@ void nugget::train(const mat<float>& raw_data,
 	const std::string& o_activ,
 	float alpha)
 {
-	int m; // size of data sample
+	unsigned int m; // size of data sample
 	int activation;
 
 	// seting condition for selected activation function
@@ -493,7 +492,7 @@ void nugget::train(const mat<float>& raw_data,
 		dZ[layer.size()] = A[layer.size()] - lab;
 		dW[layer.size()] = 1 / (float)m * dZ[layer.size()] * A[layer.size() - 1].T();
 		db[layer.size()] = 1 / (float)m * dZ[layer.size()].sum("rows");
-		for (int i = layer.size() - 1; i > 0; i--) {
+		for (int i = static_cast<int>(layer.size()) - 1; i > 0; i--) {
 
 			if (activation) {
 
@@ -547,10 +546,10 @@ void nugget::train(const mat<float>& raw_data,
 void nugget::train(const mat<float>& raw_data,
 	const mat<float>& labels,
 	int it,
-	std::string activ,
-	std::string o_activ,
+	const std::string& activ,
+	const std::string& o_activ,
 	float alpha,
-	std::string filename)
+	const std::string &filename)
 {
 	nugget::train(raw_data, labels, it, activ, o_activ, alpha);
 	std::cout << "Saving model. "<< "\n";
@@ -677,11 +676,7 @@ void nugget::run(const mat<float>& raw_data) {
 
 	}
 
-
 	Z[layer.size()] = this->weight[layer.size()] * A[layer.size() - 1] + this->bias[layer.size()];
-
-	A[layer.size()] = softmax(Z[layer.size()]); // output layer
-
-
+	A[layer.size()] = Z[layer.size()]; // output layer
 
 }

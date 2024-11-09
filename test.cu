@@ -115,7 +115,7 @@ int main()
 
     std::cout << "Training.\n\n";
     //test_nug.train(data, labels, 20, "ReLu", "softmax", 0.02);
-    test_nug.train(data, labels, 20, "ReLu", "softmax", 0.02, "TestSave.txt");
+    test_nug.train(data, labels, 21, "ReLu", "softmax", 0.02, "TestSave.txt");
     //sigmoid
 
     //  ---------- Running test data --------------
