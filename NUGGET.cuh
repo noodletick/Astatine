@@ -15,10 +15,13 @@ private:
 	std::vector<int> layer; // vector of ints describing the hidden layers
 	int Ninput, Noutput; // number of inputs and outputs neurons
 	int activF; //Type of activation function used during training (set during training)
+	float L_ReLu_factor; //if trained with leaky ReLu, this variable is set to the function factor for x < 0
 	static mat<float> xav_uni(int sizerow, int sizecol, int inputs, int outputs); // uniform xavier initialization
 	static mat<float> xav_norm(int sizerow, int sizecol, int inputs, int outputs); // normal xavier initialization
 	static mat<float> ReLu(mat<float> a); // ReLu function for forward propagation
 	static mat<float> ReLuPr(mat<float> a); // Derivative of ReLu for back propagation
+	static mat<float> leaky_ReLu(mat<float> a, const float& b);
+	static mat<float> leaky_ReLuPr(mat<float> a, const float& b);
 	static mat<float> sigmoid(mat<float> a); // Sigmoid function for forward propagation
 	static mat<float> sigmoidPr(mat<float> a); // Derivative of the sigmoid function for the back propagation
 	friend float sig(float);
@@ -28,17 +31,35 @@ private:
 	void save(const std::string&);
 	void save();
 	static mat<float> normalize(const mat<float>& a, const unsigned int& inputs);
+	void core_train(const mat<float> &, const mat<float> &, int, const std::string &,
+	                               const std::string &, float, const std::string &, float, float);
 public:
-	// -- constructors --
+	// ---------- constructors ----------
 	nugget(int inputs, int outputs, std::vector<int> hid_layers, const std::string& init);
 	explicit nugget(const std::string& read); // initialize using a save file of a previously trained NN
-	// -- methods --
+	// ---------- methods ----------
+	// train functions
+	void train(const mat<float> &, const mat<float> &, int, const std::string &,
+								   const std::string &, float, const std::string &, float, float, const std::string&);
+	void train(const mat<float> &, const mat<float> &, int, const std::string &,
+								   const std::string &, float, const std::string &, float, float);
+	void train(const mat<float> &, const mat<float> &, int, const std::string &,
+								   const std::string &, float, const std::string &, float, const std::string&);
+	void train(const mat<float> &, const mat<float> &, int, const std::string &,
+								   const std::string &, float, const std::string &, float);
+	void train(const mat<float> &, const mat<float> &, int, const std::string &,
+									   const std::string &, const std::string &, float, float, const std::string&);
+	void train(const mat<float> &, const mat<float> &, int, const std::string &,
+									   const std::string &, const std::string &, float, float);
+	void train(const mat<float> &, const mat<float> &, int, const std::string &,
+										   const std::string &, const std::string &, float, const std::string&);
+	void train(const mat<float> &, const mat<float> &, int, const std::string &,
+										   const std::string &, const std::string &, float);
 
-	void train(const mat<float>& data, const mat<float>& labels, int it, const std::string& activ, const std::string& o_activ, float alpha);
-	void train(const mat<float>& data, const mat<float>& labels, int it, const std::string& activ, const std::string& o_activ, float alpha, const std::string &);
+	// run functions
 	void run(const mat<float>& data, const mat<float>& labels);
 	void run(const mat<float>& data);
-	
+
 
 };
 

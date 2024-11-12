@@ -10,7 +10,8 @@ if (OPENMP_FOUND)
 endif()
 add_executable(Astatine nugget.cu
         NUGGET.cuh
-        test.cu)
+        test.cu
+        ngget_kernels.cu)
 
 set_target_properties(Astatine PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON)

@@ -53,8 +53,8 @@ public:
 	// -- utilities -- 
 	mat T(); // transpose
 	void print(); // print matrix
-	unsigned int rows(); // returns number of rows
-	unsigned int cols(); // returns number of column
+	unsigned int rows() const; // returns number of rows
+	unsigned int cols() const; // returns number of column
 	mat sum(std::string); // sum along axis
 	U sum(); // sum all cells
 	U max(); // returns the largest element of the matrix
@@ -444,11 +444,11 @@ mat<U> mat<U>::T() { // matrix transpose function
 }
 
 template <typename U>
-unsigned int mat<U>::rows() {
+unsigned int mat<U>::rows() const {
 	return this->m;
 }
 template <typename U>
-unsigned int mat<U>::cols() {
+unsigned int mat<U>::cols() const {
 	return this->n;
 }
 template <typename U>

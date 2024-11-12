@@ -128,6 +128,7 @@ nugget::nugget(int inputs, int outputs, std::vector<int> hid_layers, const std::
 		std::cout << "invalid weight initialization constructor argument" << std::endl;
 		exit(0);
 	}
+	this->L_ReLu_factor = 0;
 	this->activF = -1; //placeholder value until the activation function is set in .train()
 	this->layer = hid_layers;
 	this->Ninput = inputs;
@@ -182,12 +183,10 @@ mat<float> nugget::normalize(const mat<float>& a, const unsigned int& inputs) {
 
 	mat<float> normalized = a;
 	if (normalized.rows() == inputs) {
-		unsigned int m = normalized.cols();
 		normalized  = normalized / normalized.max();
 	}
 	else if (normalized.cols() == inputs) {
 		normalized = normalized.T();
-		unsigned int m = normalized.cols();
 		normalized  = normalized / normalized.max();
 	}
 	else {
@@ -251,6 +250,42 @@ mat<float> nugget::ReLuPr(mat<float> a) {
 		for (int j = 0; j < a.cols(); j++) {
 			if (a(i, j) <= 0) {
 				temp(i, j) = 0;
+			}
+			else {
+				temp(i, j) = 1;
+			}
+		}
+	}
+
+	return temp;
+}
+
+mat<float> nugget::leaky_ReLu(mat<float> a, const float& b) {
+	//applies the Leaky ReLu activation function on all elements of matrix a with factor b for x < 0
+	mat<float> temp = a;
+	#pragma omp parallel for
+	for (int i = 0; i < a.rows(); i++) {
+		for (int j = 0; j < a.cols(); j++) {
+			if (a(i, j) <= 0) {
+				temp(i, j) = a(i, j)*b;
+			}
+			else {
+				temp(i, j) = a(i, j);
+			}
+		}
+	}
+
+	return temp;
+}
+
+mat<float> nugget::leaky_ReLuPr(mat<float> a, const float& b) {
+	//applies the derivative of the Leaky ReLu on all elements of matrix a with factor b for x < 0
+	mat<float> temp = a;
+	#pragma omp parallel for
+	for (int i = 0; i < a.rows(); i++) {
+		for (int j = 0; j < a.cols(); j++) {
+			if (a(i, j) <= 0) {
+				temp(i, j) = b;
 			}
 			else {
 				temp(i, j) = 1;
@@ -433,27 +468,55 @@ void nugget::save(const std::string& filename) {
 }
 
 
-void nugget::train(const mat<float>& raw_data,
+void nugget::core_train(const mat<float>& raw_data,
 	const mat<float>& labels,
-	int it,
-	const std::string& activ,
+	const int it,
 	const std::string& o_activ,
-	float alpha)
+	const std::string& activ,
+	const float L_RelU_factor,
+	const std::string& learning_schedule,
+	float lschedule1,
+	float lschedule2)
 {
-	unsigned int m; // size of data sample
-	int activation;
+	// determine size of data set
+	unsigned int m;
+	if (raw_data.cols() == this->Ninput) {
+		m = raw_data.rows();
+	}
+	else {
+		m = raw_data.cols();
+	}
 
-	// seting condition for selected activation function
+
+	// setting condition for selected activation function
 	if (activ == "ReLu") {
-		activation = 0;
 		this->activF = 0;
 	}
 	else if (activ == "sigmoid") {
-		activation = 1;
 		this->activF = 1;
 	}
+	else if (activ == "leaky ReLu") {
+		this->activF = 2;
+		if (L_RelU_factor < 0) {
+			std::cout<<"WARNING: Leaky ReLu factor is smaller than 0\n";
+		}
+	}
 	else {
-		std::cout << "invalid activation function argument for training function, please select either 'ReLu' or 'sigmoid'." << std::endl;
+		std::cout <<
+				"invalid activation function argument for training function, please select either 'ReLu', 'leaky ReLu, or 'sigmoid'."
+				<< std::endl;
+		exit(0);
+	}
+
+	// validating learning schedule arguments
+	if (learning_schedule == "fixed" && lschedule1 != 0) {
+		lschedule2 = 0;
+	}
+	else if (learning_schedule == "exponential" && lschedule1 != 0) {
+		// all good
+	}
+	else {
+		std::cout<<"invalid learning schedule parameters\n";
 		exit(0);
 	}
 	// normalize and process input data
@@ -471,87 +534,104 @@ void nugget::train(const mat<float>& raw_data,
 	int epoch = 0;
 
 	while (epoch < it) {//training loop
-
+		//learning rate
+		float alpha = lschedule1 * std::exp(static_cast<float>(epoch)/static_cast<float>(it)*lschedule2);
 		// ------------------ forward propagation --------------------------
 		std::chrono::steady_clock::time_point epoch_start = std::chrono::steady_clock::now();
-
 		Z[0] = this->weight[0] * data + this->bias[0];
-		if (activation) {
 
-			A[0] = sigmoid(Z[0]);
+		switch (this->activF) {
+			case 0:
+				A[0] = ReLu(Z[0]);
+				break;
+			case 1:
+				A[0] = sigmoid(Z[0]);
+				break;
+			case 2:
+				A[0] = leaky_ReLu(Z[0], L_RelU_factor);
+				break;
+			default:
+				std::cout<<"invalid switch case\n";
+				exit(0);
 		}
-		else {
 
-			A[0] = ReLu(Z[0]);
-
-		}
 		for (int i = 1; i < this->layer.size(); i++) {
 			Z[i] = this->weight[i] * A[i - 1] + this->bias[i];
 
-			if (activation) {
-
-				A[i] = sigmoid(Z[i]);
+			switch (this->activF) {
+				case 0:
+					A[i] = ReLu(Z[i]);
+					break;
+				case 1:
+					A[i] = sigmoid(Z[i]);
+					break;
+				case 2:
+					A[i] = leaky_ReLu(Z[i], L_RelU_factor);
+					break;
+				default:
+					std::cout<<"invalid switch case\n";
+					exit(0);
 			}
-			else {
-
-				A[i] = ReLu(Z[i]);
-
-			}
-
 		}
-
 		Z[layer.size()] = this->weight[layer.size()] * A[layer.size() - 1] + this->bias[layer.size()];
 		A[layer.size()] = softmax(Z[layer.size()]); // output layer
 
 		//----------------------- back propagation ---------------------------
 
 		dZ[layer.size()] = A[layer.size()] - lab;
-		dW[layer.size()] = 1 / (float)m * dZ[layer.size()] * A[layer.size() - 1].T();
-		db[layer.size()] = 1 / (float)m * dZ[layer.size()].sum("rows");
+		dW[layer.size()] = 1 / static_cast<float>(m) * dZ[layer.size()] * A[layer.size() - 1].T();
+		db[layer.size()] = 1 / static_cast<float>(m) * dZ[layer.size()].sum("rows");
+
 		for (int i = static_cast<int>(layer.size()) - 1; i > 0; i--) {
-
-			if (activation) {
-
-				dZ[i] = this->weight[i + 1].T() * dZ[i + 1] ^ sigmoidPr(Z[i]);
+			switch (this->activF) {
+				case 0:
+					dZ[i] = this->weight[i + 1].T() * dZ[i + 1] ^ ReLuPr(Z[i]);
+					break;
+				case 1:
+					dZ[i] = this->weight[i + 1].T() * dZ[i + 1] ^ sigmoidPr(Z[i]);
+					break;
+				case 2:
+					dZ[i] =	this->weight[i + 1].T() * dZ[i + 1] ^ leaky_ReLuPr(Z[i], L_RelU_factor);
+					break;
+				default:
+					std::cout<<"invalid switch case\n";
+					exit(0);
 			}
-			else {
 
-				dZ[i] = this->weight[i + 1].T() * dZ[i + 1] ^ ReLuPr(Z[i]);
-
-			}
-
-			//std::cout << "mk3\n\n";
-			dW[i] = 1 / (float)m * dZ[i] * A[i - 1].T();
-			//std::cout << "mk4\n\n";
-			db[i] = 1 / (float)m * dZ[i].sum("rows");
+			dW[i] = 1 / static_cast<float>(m) * dZ[i] * A[i - 1].T();
+			db[i] = 1 / static_cast<float>(m) * dZ[i].sum("rows");
 		}
 
-		if (activation) {
-
-			dZ[0] = this->weight[1].T() * dZ[1] ^ sigmoidPr(Z[0]);
+		switch (this->activF) {
+			case 0:
+				dZ[0] = this->weight[1].T() * dZ[1] ^ ReLuPr(Z[0]);
+				break;
+			case 1:
+				dZ[0] = this->weight[1].T() * dZ[1] ^ sigmoidPr(Z[0]);
+				break;
+			case 2:
+				dZ[0] = this->weight[1].T() * dZ[1] ^ leaky_ReLuPr(Z[0], L_RelU_factor);
+				break;
+			default:
+				std::cout<<"invalid switch case\n";
+				exit(0);
 		}
-		else {
 
-			dZ[0] = this->weight[1].T() * dZ[1] ^ ReLuPr(Z[0]);
+		dW[0] = 1 / static_cast<float>(m) * dZ[0] * data.T();
+		db[0] = 1 / static_cast<float>(m) * dZ[0].sum("rows");
 
-		}
-		//std::cout << "mk3\n\n";
-		dW[0] = 1 / (float)m * dZ[0] * data.T();
-		//std::cout << "mk4\n\n"
-		db[0] = 1 / (float)m * dZ[0].sum("rows");
-
+		std::cout<<"alpha is "<<alpha<<"\n";
 		for (int i = 0; i < this->layer.size() + 1; i++) {
 
 			this->weight[i] = weight[i] - alpha * dW[i];
 
 			this->bias[i] = bias[i] - alpha * db[i];
 		}
-				if (epoch % 10 == 0) {
+		if (epoch % 10 == 0) {
 			std::cout << "Epoch: " << epoch << "\n";
 			accuracy(A[layer.size()], lab);
-
-
 		}
+
 		std::chrono::steady_clock::time_point epoch_end = std::chrono::steady_clock::now();
 		std::cout << "epoch time = " << std::chrono::duration_cast<std::chrono::milliseconds>(epoch_end - epoch_start).count() << "[ms]" << std::endl;
 		epoch++;
@@ -561,78 +641,210 @@ void nugget::train(const mat<float>& raw_data,
 
 void nugget::train(const mat<float>& raw_data,
 	const mat<float>& labels,
-	int it,
-	const std::string& activ,
+	const int it,
 	const std::string& o_activ,
-	float alpha,
-	const std::string &filename)
+	const std::string& activ,
+	const float L_RelU_factor,
+	const std::string& learning_schedule,
+	float lschedule1,
+	float lschedule2,
+	const std::string& saveFile)
 {
-	nugget::train(raw_data, labels, it, activ, o_activ, alpha);
+	this->L_ReLu_factor = L_RelU_factor;
+	core_train(raw_data, labels, it, o_activ, activ, L_RelU_factor, learning_schedule, lschedule1, lschedule2);
 	std::cout << "Saving model. "<< "\n";
-	save(filename);
-
+	save(saveFile);
 }
-
-void nugget::run(const mat<float>& raw_data, const mat<float>& labels) {
-	// runing the model is just the forward propagation step with a new dataset. This function takes labels and performs an accuracy calculation at the end.
-
-	// normalize and process input data
-
-	mat<float> data = raw_data;
-	if (data.rows() == this->Ninput) {
-		data = data / data.max();
-	}
-	else if (data.cols() == this->Ninput) {
-		data = data.T();
-		data = data / data.max();
-	}
-	else {
-		std::cout << "Dimensions of the data matrix are " << data.rows() << " by " << data.cols() << ", at least one of those dimensions should match the specificed input layer size for this nugget which is" << this->Ninput << "." << std::endl;
+void nugget::train(const mat<float>& raw_data,
+	const mat<float>& labels,
+	const int it,
+	const std::string& o_activ,
+	const std::string& activ,
+	const float L_RelU_factor,
+	const std::string& learning_schedule,
+	float lschedule1,
+	float lschedule2)
+{
+	this->L_ReLu_factor = L_RelU_factor;
+	core_train(raw_data, labels, it, o_activ, activ, L_RelU_factor, learning_schedule, lschedule1, lschedule2);
+	std::cout << "Saving model. "<< "\n";
+	save();
+}
+void nugget::train(const mat<float>& raw_data,
+	const mat<float>& labels,
+	const int it,
+	const std::string& o_activ,
+	const std::string& activ,
+	const float L_RelU_factor,
+	const std::string& learning_schedule,
+	float lschedule1,
+	const std::string& saveFile)
+{
+	this->L_ReLu_factor = L_RelU_factor;
+	if(learning_schedule != "fixed") {
+		std::cout <<
+				"training function argument for learning schedule indicates 'exponential' but only one schedule value passed instead of two.\n";
 		exit(0);
 	}
+	core_train(raw_data, labels, it, o_activ, activ, L_RelU_factor, learning_schedule, lschedule1, 0);
+	std::cout << "Saving model. "<< "\n";
+	save(saveFile);
+}
+void nugget::train(const mat<float>& raw_data,
+	const mat<float>& labels,
+	const int it,
+	const std::string& o_activ,
+	const std::string& activ,
+	const float L_RelU_factor,
+	const std::string& learning_schedule,
+	float lschedule1)
+{
+	this->L_ReLu_factor = L_RelU_factor;
+	if(learning_schedule != "fixed") {
+		std::cout <<
+				"training function argument for learning schedule indicates 'exponential' but only one schedule value passed instead of two.\n";
+		exit(0);
+	}
+	core_train(raw_data, labels, it, o_activ, activ, L_RelU_factor, learning_schedule, lschedule1, 0);
+	std::cout << "Saving model. "<< "\n";
+	save();
+}
+void nugget::train(const mat<float>& raw_data,
+	const mat<float>& labels,
+	const int it,
+	const std::string& o_activ,
+	const std::string& activ,
+	const std::string& learning_schedule,
+	float lschedule1,
+	float lschedule2,
+	const std::string& saveFile)
+{
+	if(activ == "leaky ReLu") {
+		std::cout <<
+				"training function argument for activation function indicates 'leaky ReLu' but no activation function parameter passed (expected one).\n";
+		exit(0);
+	}
+	core_train(raw_data, labels, it, o_activ, activ, 0, learning_schedule, lschedule1, lschedule2);
+	std::cout << "Saving model. "<< "\n";
+	save(saveFile);
+}
+void nugget::train(const mat<float>& raw_data,
+	const mat<float>& labels,
+	const int it,
+	const std::string& o_activ,
+	const std::string& activ,
+	const std::string& learning_schedule,
+	float lschedule1,
+	float lschedule2)
+{
+	if(activ == "leaky ReLu") {
+		std::cout <<
+				"training function argument for activation function indicates 'leaky ReLu' but no activation function parameter passed (expected one).\n";
+		exit(0);
+	}
+	core_train(raw_data, labels, it, o_activ, activ, 0, learning_schedule, lschedule1, lschedule2);
+	std::cout << "Saving model. "<< "\n";
+	save();
+}
+void nugget::train(const mat<float>& raw_data,
+	const mat<float>& labels,
+	const int it,
+	const std::string& o_activ,
+	const std::string& activ,
+	const std::string& learning_schedule,
+	float lschedule1,
+	const std::string& saveFile)
+{
+	if(activ == "leaky ReLu") {
+		std::cout <<
+				"training function argument for activation function indicates 'leaky ReLu' but no activation function parameter passed (expected one).\n";
+		exit(0);
+	}
+	if(learning_schedule != "fixed") {
+		std::cout <<
+				"training function argument for learning schedule indicates 'exponential' but only one schedule value passed instead of two.\n";
+		exit(0);
+	}
+	core_train(raw_data, labels, it, o_activ, activ, 0, learning_schedule, lschedule1, 0);
+	std::cout << "Saving model. "<< "\n";
+	save(saveFile);
+}
+void nugget::train(const mat<float>& raw_data,
+	const mat<float>& labels,
+	const int it,
+	const std::string& o_activ,
+	const std::string& activ,
+	const std::string& learning_schedule,
+	float lschedule1)
+{
+	if(activ == "leaky ReLu") {
+		std::cout <<
+				"training function argument for activation function indicates 'leaky ReLu' but no activation function parameter passed (expected one).\n";
+		exit(0);
+	}
+	if(learning_schedule != "fixed") {
+		std::cout <<
+				"training function argument for learning schedule indicates 'exponential' but only one schedule value passed instead of two.\n";
+		exit(0);
+	}
+	core_train(raw_data, labels, it, o_activ, activ, 0, learning_schedule, lschedule1, 0);
+	std::cout << "Saving model. "<< "\n";
+	save();
+}
+void nugget::run(const mat<float>& raw_data, const mat<float>& labels) {
+	// running the model is just the forward propagation step with a new dataset.
+	// This function takes labels and performs an accuracy calculation at the end.
+	const float L_RelU_factor = this->L_ReLu_factor;
+	// normalize and process input data
 
+	mat<float> data = normalize(raw_data, Ninput);
 
 	// 1-hot labels
 
-	mat lab = OneHT(labels, Noutput);
+	mat<float> lab = OneHT(labels, Noutput);
 
 	std::vector<mat<float>> A, Z;
 	A.resize(layer.size() + 1);
 	Z.resize(layer.size() + 1);
 
-
-
 	// forward propagation
 	Z[0] = this->weight[0] * data + this->bias[0];
-	if (this->activF) {
 
-		A[0] = sigmoid(Z[0]);
+	switch (this->activF) {
+		case 0:
+			A[0] = ReLu(Z[0]);
+		break;
+		case 1:
+			A[0] = sigmoid(Z[0]);
+		break;
+		case 2:
+			A[0] = leaky_ReLu(Z[0], L_RelU_factor);
+		break;
+		default:
+			std::cout<<"invalid switch case\n";
+		exit(0);
 	}
-	else {
-
-		A[0] = ReLu(Z[0]);
-
-	}
-
 
 	for (int i = 1; i < this->layer.size(); i++) {
 		Z[i] = this->weight[i] * A[i - 1] + this->bias[i];
 
-		if (this->activF) {
-
-			A[i] = sigmoid(Z[i]);
+		switch (this->activF) {
+			case 0:
+				A[i] = ReLu(Z[i]);
+			break;
+			case 1:
+				A[i] = sigmoid(Z[i]);
+			break;
+			case 2:
+				A[i] = leaky_ReLu(Z[i], L_RelU_factor);
+			break;
+			default:
+				std::cout<<"invalid switch case\n";
+			exit(0);
 		}
-		else {
-
-			A[i] = ReLu(Z[i]);
-
-		}
-
 	}
 
-
 	Z[layer.size()] = this->weight[layer.size()] * A[layer.size() - 1] + this->bias[layer.size()];
-
 	A[layer.size()] = softmax(Z[layer.size()]); // output layer
 
 	accuracy(A[layer.size()], lab);
@@ -640,56 +852,52 @@ void nugget::run(const mat<float>& raw_data, const mat<float>& labels) {
 }
 
 void nugget::run(const mat<float>& raw_data) {
-	// runing the model is just the forward propagation step with a new dataset. This function takes labels and performs an accuracy calculation at the end.
+	// running the model is just the forward propagation step with a new dataset.
+	// This function takes labels and performs an accuracy calculation at the end.
+	const float L_RelU_factor = this->L_ReLu_factor;
+	// normalize and process input data
 
-	mat<float> data = raw_data;
-	if (data.rows() == this->Ninput) {
-
-		data = data / data.max();
-	}
-	else if (data.cols() == this->Ninput) {
-		data = data.T();
-
-		data = data / data.max();
-	}
-	else {
-		std::cout << "Dimensions of the data matrix are " << data.rows() << " by " << data.cols() << ", at least one of those dimensions should match the specificed input layer size for this nugget which is" << this->Ninput << "." << std::endl;
-		exit(0);
-	}
-
+	mat<float> data = normalize(raw_data, Ninput);
 
 	std::vector<mat<float>> A, Z;
 	A.resize(layer.size() + 1);
 	Z.resize(layer.size() + 1);
 
-
-
 	// forward propagation
 	Z[0] = this->weight[0] * data + this->bias[0];
-	if (this->activF) {
 
-		A[0] = sigmoid(Z[0]);
+	switch (this->activF) {
+		case 0:
+			A[0] = ReLu(Z[0]);
+		break;
+		case 1:
+			A[0] = sigmoid(Z[0]);
+		break;
+		case 2:
+			A[0] = leaky_ReLu(Z[0], L_RelU_factor);
+		break;
+		default:
+			std::cout<<"invalid switch case\n";
+		exit(0);
 	}
-	else {
-
-		A[0] = ReLu(Z[0]);
-
-	}
-
 
 	for (int i = 1; i < this->layer.size(); i++) {
 		Z[i] = this->weight[i] * A[i - 1] + this->bias[i];
 
-		if (this->activF) {
-
-			A[i] = sigmoid(Z[i]);
+		switch (this->activF) {
+			case 0:
+				A[i] = ReLu(Z[i]);
+			break;
+			case 1:
+				A[i] = sigmoid(Z[i]);
+			break;
+			case 2:
+				A[i] = leaky_ReLu(Z[i], L_RelU_factor);
+			break;
+			default:
+				std::cout<<"invalid switch case\n";
+			exit(0);
 		}
-		else {
-
-			A[i] = ReLu(Z[i]);
-
-		}
-
 	}
 
 	Z[layer.size()] = this->weight[layer.size()] * A[layer.size() - 1] + this->bias[layer.size()];

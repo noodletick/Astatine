@@ -104,15 +104,15 @@ int main()
 
     std::cout << "Training.\n\n";
     //test_nug.train(data, labels, 20, "ReLu", "softmax", 0.02);
-    test_nug.train(data, labels, 200, "ReLu", "softmax", 0.03, "TestSave.txt");
+    test_nug.train(data, labels, 100, "softmax", "leaky ReLu", 0.01,"exponential", 0.035, 2, "TestSave.txt");
     //sigmoid
 
     //  ---------- Running test data --------------
     std::cout << "Testing on new data.\n\n";
     test_nug.run(Tdata, Tlabels);
 
-    //  ---------- intializing new nugget and reading in save file --------------
-    std::cout << "Intializing new nugget and reading in save file.\n\n";
+    //  ---------- initializing new nugget and reading in save file --------------
+    std::cout << "Initializing new nugget and reading in save file.\n\n";
     nugget newnug("TestSave.txt");
 
     //  ---------- Running test data on newnug--------------
