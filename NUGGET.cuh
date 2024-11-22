@@ -6,6 +6,14 @@
 
 #ifndef NUG_H
 #define NUG_H
+
+__global__ void ReLu_kernel(float* A, float* B, int cols, int rows);
+__global__ void ReLuPr_kernel(float* A, float* B, int cols, int rows);
+__global__ void Leaky_ReLu_kernel(float* A, float* B, float c, int cols, int rows);
+__global__ void Leaky_ReLuPr_kernel(float* A, float* B, float c, int cols, int rows);
+__global__ void sigmoid_kernel(float* A, float* B, int cols, int rows);
+__global__ void sigmoidPr_kernel(float* A, float* B, int cols, int rows);
+__device__ float sigm(float x);
 class nugget {
 
 private:
@@ -24,7 +32,6 @@ private:
 	static mat<float> leaky_ReLuPr(mat<float> a, const float& b);
 	static mat<float> sigmoid(mat<float> a); // Sigmoid function for forward propagation
 	static mat<float> sigmoidPr(mat<float> a); // Derivative of the sigmoid function for the back propagation
-	friend float sig(float);
 	static mat<float> OneHT(mat<float> y,const unsigned int&);
 	static mat<float> softmax(mat<float> A);
 	static void accuracy(mat<float> A, mat<float> y);
@@ -33,6 +40,14 @@ private:
 	static mat<float> normalize(const mat<float>& a, const unsigned int& inputs);
 	void core_train(const mat<float> &, const mat<float> &, int, const std::string &,
 	                               const std::string &, float, const std::string &, float, float);
+	// ---------- dedicated CUDA kernels ----------
+	friend __global__ void ReLu_kernel(float* A, float* B, int cols, int rows);
+	friend __global__ void ReLuPr_kernel(float* A, float* B, int cols, int rows);
+	friend __global__ void Leaky_ReLu_kernel(float* A, float* B, float c, int cols, int rows);
+	friend __global__ void Leaky_ReLuPr_kernel(float* A, float* B, float c, int cols, int rows);
+	friend __global__ void sigmoid_kernel(float* A, float* B, int cols, int rows);
+	friend __global__ void sigmoidPr_kernel(float* A, float* B, int cols, int rows);
+	friend __device__ float sigm(float x);
 public:
 	// ---------- constructors ----------
 	nugget(int inputs, int outputs, std::vector<int> hid_layers, const std::string& init);
@@ -62,5 +77,7 @@ public:
 
 
 };
+// --------------- Nugget kernel functions -----------------------
+
 
 #endif

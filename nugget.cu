@@ -21,8 +21,11 @@ nugget::nugget(const std::string& read) {
 	std::ifstream savefile;
 	savefile.open(read);
 	int tempInt, temp2;
+	float tempFloat;
 	savefile >> tempInt;
 	this->activF = tempInt;
+	savefile >> tempFloat;
+	this->L_ReLu_factor = tempFloat;
 	savefile >> tempInt;
 	this->Ninput = tempInt;
 	savefile >> tempInt;
@@ -226,112 +229,134 @@ mat<float> nugget::OneHT(mat<float> y, const unsigned int& m) {
 
 mat<float> nugget::ReLu(mat<float> a) {
 	//applies the ReLu activation function on all elements of matrix a
+	const unsigned int columns = a.cols();
+	const unsigned int rows = a.rows();
 	mat<float> temp = a;
-	#pragma omp parallel for
-	for (int i = 0; i < a.rows(); i++) {
-		for (int j = 0; j < a.cols(); j++) {
-			if (a(i, j) <= 0) {
-				temp(i, j) = 0;
-			}
-			else {
-				temp(i, j) = a(i, j);
-			}
-		}
-	}
 
+	float* c_A, * c_B;
+	cudaMallocManaged(&c_A, rows * columns * sizeof(float));
+	cudaMallocManaged(&c_B, rows * columns * sizeof(float));
+
+	cudaMemcpy(c_A, a.data(), rows * columns * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(c_B, temp.data(), rows * columns * sizeof(float), cudaMemcpyHostToDevice);
+
+	dim3 grid(columns / 32 + 1, rows / 32 + 1, 1);
+	dim3 block(32, 32, 1);
+	ReLu_kernel << <grid, block >> > (c_A, c_B, columns, rows);
+	cudaMemcpy(temp.data(), c_B, rows * columns * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaFree(c_A);
+	cudaFree(c_B);
 	return temp;
 }
 
 mat<float> nugget::ReLuPr(mat<float> a) {
-	//applies teh derivative of the ReLu activation function to every element in matrix a
+	//applies the derivative of the ReLu activation function to every element in matrix a
+	const unsigned int columns = a.cols();
+	const unsigned int rows = a.rows();
 	mat<float> temp = a;
-	#pragma omp parallel for
-	for (int i = 0; i < a.rows(); i++) {
-		for (int j = 0; j < a.cols(); j++) {
-			if (a(i, j) <= 0) {
-				temp(i, j) = 0;
-			}
-			else {
-				temp(i, j) = 1;
-			}
-		}
-	}
 
+	float* c_A, * c_B;
+	cudaMallocManaged(&c_A, rows * columns * sizeof(float));
+	cudaMallocManaged(&c_B, rows * columns * sizeof(float));
+
+	cudaMemcpy(c_A, a.data(), rows * columns * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(c_B, temp.data(), rows * columns * sizeof(float), cudaMemcpyHostToDevice);
+
+	dim3 grid(columns / 32 + 1, rows / 32 + 1, 1);
+	dim3 block(32, 32, 1);
+	ReLuPr_kernel << <grid, block >> > (c_A, c_B, columns, rows);
+	cudaMemcpy(temp.data(), c_B, rows * columns * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaFree(c_A);
+	cudaFree(c_B);
 	return temp;
 }
 
 mat<float> nugget::leaky_ReLu(mat<float> a, const float& b) {
 	//applies the Leaky ReLu activation function on all elements of matrix a with factor b for x < 0
+	const unsigned int columns = a.cols();
+	const unsigned int rows = a.rows();
 	mat<float> temp = a;
-	#pragma omp parallel for
-	for (int i = 0; i < a.rows(); i++) {
-		for (int j = 0; j < a.cols(); j++) {
-			if (a(i, j) <= 0) {
-				temp(i, j) = a(i, j)*b;
-			}
-			else {
-				temp(i, j) = a(i, j);
-			}
-		}
-	}
 
+	float* c_A, * c_B;
+	cudaMallocManaged(&c_A, rows * columns * sizeof(float));
+	cudaMallocManaged(&c_B, rows * columns * sizeof(float));
+
+	cudaMemcpy(c_A, a.data(), rows * columns * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(c_B, temp.data(), rows * columns * sizeof(float), cudaMemcpyHostToDevice);
+
+	dim3 grid(columns / 32 + 1, rows / 32 + 1, 1);
+	dim3 block(32, 32, 1);
+	Leaky_ReLu_kernel << <grid, block >> > (c_A, c_B, b, columns, rows);
+	cudaMemcpy(temp.data(), c_B, rows * columns * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaFree(c_A);
+	cudaFree(c_B);
 	return temp;
 }
 
 mat<float> nugget::leaky_ReLuPr(mat<float> a, const float& b) {
 	//applies the derivative of the Leaky ReLu on all elements of matrix a with factor b for x < 0
+	const unsigned int columns = a.cols();
+	const unsigned int rows = a.rows();
 	mat<float> temp = a;
-	#pragma omp parallel for
-	for (int i = 0; i < a.rows(); i++) {
-		for (int j = 0; j < a.cols(); j++) {
-			if (a(i, j) <= 0) {
-				temp(i, j) = b;
-			}
-			else {
-				temp(i, j) = 1;
-			}
-		}
-	}
 
+	float* c_A, * c_B;
+	cudaMallocManaged(&c_A, rows * columns * sizeof(float));
+	cudaMallocManaged(&c_B, rows * columns * sizeof(float));
+
+	cudaMemcpy(c_A, a.data(), rows * columns * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(c_B, temp.data(), rows * columns * sizeof(float), cudaMemcpyHostToDevice);
+
+	dim3 grid(columns / 32 + 1, rows / 32 + 1, 1);
+	dim3 block(32, 32, 1);
+	Leaky_ReLuPr_kernel << <grid, block >> > (c_A, c_B, b, columns, rows);
+	cudaMemcpy(temp.data(), c_B, rows * columns * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaFree(c_A);
+	cudaFree(c_B);
 	return temp;
-}
-
-float sig(float a) {
-	//returns the sigmoid of a
-	float b = 1 / (1 + (std::exp(-a)));
-	return b;
 }
 
 mat<float> nugget::sigmoid(mat<float> a) {
 	//applies the sigmoid activation function to every element of matrix a
+	const unsigned int columns = a.cols();
+	const unsigned int rows = a.rows();
 	mat<float> temp = a;
-	#pragma omp parallel for
-	for (int i = 0; i < a.rows(); i++) {
-		for (int j = 0; j < a.cols(); j++) {
 
-			temp(i, j) = sig(a(i, j));
+	float* c_A, * c_B;
+	cudaMallocManaged(&c_A, rows * columns * sizeof(float));
+	cudaMallocManaged(&c_B, rows * columns * sizeof(float));
 
-		}
-	}
+	cudaMemcpy(c_A, a.data(), rows * columns * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(c_B, temp.data(), rows * columns * sizeof(float), cudaMemcpyHostToDevice);
 
+	dim3 grid(columns / 32 + 1, rows / 32 + 1, 1);
+	dim3 block(32, 32, 1);
+	sigmoid_kernel << <grid, block >> > (c_A, c_B, columns, rows);
+	cudaMemcpy(temp.data(), c_B, rows * columns * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaFree(c_A);
+	cudaFree(c_B);
 	return temp;
-
 }
 
 mat<float> nugget::sigmoidPr(mat<float> a) {
 	//applies the derivative of the sigmoid function to every element of matrix a
+	const unsigned int columns = a.cols();
+	const unsigned int rows = a.rows();
 	mat<float> temp = a;
-#pragma omp parallel for
-	for (int i = 0; i < a.rows(); i++) {
-		for (int j = 0; j < a.cols(); j++) {
 
-			temp(i, j) = sig(a(i, j))*(1- sig(a(i, j)));
+	float* c_A, * c_B;
+	cudaMallocManaged(&c_A, rows * columns * sizeof(float));
+	cudaMallocManaged(&c_B, rows * columns * sizeof(float));
 
-		}
-	}
+	cudaMemcpy(c_A, a.data(), rows * columns * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(c_B, temp.data(), rows * columns * sizeof(float), cudaMemcpyHostToDevice);
 
+	dim3 grid(columns / 32 + 1, rows / 32 + 1, 1);
+	dim3 block(32, 32, 1);
+	sigmoidPr_kernel << <grid, block >> > (c_A, c_B, columns, rows);
+	cudaMemcpy(temp.data(), c_B, rows * columns * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaFree(c_A);
+	cudaFree(c_B);
 	return temp;
-
 }
 
 mat<float> nugget::softmax(mat<float> A) {
@@ -375,6 +400,7 @@ void nugget::save() {
 	std::ofstream savefile;
 	savefile.open("save.nn");
 	savefile << this->activF << "\n";
+	savefile << this->L_ReLu_factor << "\n";
 	savefile << this->Ninput << "\n";
 	savefile << this->Noutput << "\n";
 	savefile << this->layer.size() << "\n";
@@ -419,11 +445,12 @@ void nugget::save() {
 }
 
 void nugget::save(const std::string& filename) {
-	//overloaded save function that takes in a file as parameter
+	//overloaded save function that takes in a file name/path as parameter
 	char tab = 9;
 	std::ofstream savefile;
 	savefile.open(filename);
 	savefile << this->activF << "\n";
+	savefile << this->L_ReLu_factor << "\n";
 	savefile << this->Ninput << "\n";
 	savefile << this->Noutput << "\n";
 	savefile << this->layer.size() << "\n";
@@ -486,7 +513,8 @@ void nugget::core_train(const mat<float>& raw_data,
 	else {
 		m = raw_data.cols();
 	}
-
+	// record L_ReLu_Factor
+	this->L_ReLu_factor = L_RelU_factor;
 
 	// setting condition for selected activation function
 	if (activ == "ReLu") {

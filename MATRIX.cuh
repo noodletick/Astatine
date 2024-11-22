@@ -31,6 +31,9 @@ public:
 	mat(std::vector<U>&, unsigned int, unsigned int);
 	mat(std::vector<U>&);
 	mat();
+	// -- accessors --
+	U* data();
+
 	// -- operators --
 	// matrix operations
 	mat operator+(const mat&); // addition
@@ -61,6 +64,10 @@ public:
 	U min(); // returns the smallest element of the matrix
 	mat xp(); // returns e^x of every matrix elements
 };
+template <typename U>
+U* mat<U>::data() {
+	return this->matrix.data();
+}
 
 template <typename U>
 mat<U>::mat(std::vector<std::vector<U>>& M) { // contractor which accepts 2D std::vectors for 2D matrix

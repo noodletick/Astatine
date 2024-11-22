@@ -95,7 +95,7 @@ int main()
 
     //  ---------- Initializing neural network --------------
 
-    std::vector<int> hidden_layers = {80, 80, 80 };
+    std::vector<int> hidden_layers = {240,180,80};
 
     std::cout << "Initializing neural net.\n\n";
     nugget test_nug(784, 10, hidden_layers, "uniform");
@@ -104,7 +104,9 @@ int main()
 
     std::cout << "Training.\n\n";
     //test_nug.train(data, labels, 20, "ReLu", "softmax", 0.02);
-    test_nug.train(data, labels, 100, "softmax", "leaky ReLu", 0.01,"exponential", 0.035, 2, "TestSave.txt");
+    test_nug.train(data, labels, 1100, "softmax", "leaky ReLu", 0.01,"exponential", 0.025, 2, "TestSave.txt");
+    //test_nug.train(data, labels, 100, "softmax", "ReLu","exponential", 0.03, 1.5, "TestSave.txt");
+    //test_nug.train(data, labels, 350, "softmax", "sigmoid","exponential", 0.1, 0, "TestSave.txt");
     //sigmoid
 
     //  ---------- Running test data --------------
