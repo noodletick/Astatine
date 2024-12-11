@@ -9,7 +9,7 @@
 #ifndef CUTRIX_H
 #define CUTRIX_H
 template <typename U>
-__global__ void matmult_K(U* A, U* B, U* C, int width, int rowC, int colC);
+__global__ void matmult_K(const U* __restrict__ A, const U* __restrict__ B, U* C, int acols, int arows, int bcols);
 template <typename U>
 void matmult(U* A, const U* B, U* C, int arows, int acols, int brows, int bcols);
 template <typename U>
@@ -48,18 +48,47 @@ template <typename U>
 __global__ void mat_transpose_K(U* A, U* C, int cols, int rows);
 
 template <typename U>
-__global__ void matmult_K(U* A, U* B, U* C, int width, int rowC, int colC) {//CUDA kernel for matrix multiplication
+__global__ void matmult_K(const U* __restrict__ A, const U* __restrict__ B, U* C, int acols, int arows, int bcols) {
+	// Shared memory tiles for A and B
+	const int tilesize = 16;
+	__shared__ U tileA[tilesize][tilesize];
+	__shared__ U tileB[tilesize][tilesize];
 
+	// Row and column index of the C element computed by this thread
 	int row = blockIdx.y * blockDim.y + threadIdx.y;
 	int col = blockIdx.x * blockDim.x + threadIdx.x;
-	if (row < rowC && col < colC) {
-		U sum = 0;
-		for (int i = 0; i < width; i++) {
-			sum += A[row * width + i] * B[i * colC + col];
+
+	// Accumulator for the partial dot product
+	U value = 0;
+
+	// Loop over all tiles required to compute C[row][col]
+	for (int t = 0; t < (acols + tilesize - 1) / tilesize; t++) {
+		// Load a tile of A and B into shared memory
+		if (row < arows && t * tilesize + threadIdx.x < acols)
+			tileA[threadIdx.y][threadIdx.x] = A[row * acols + t * tilesize + threadIdx.x];
+		else
+			tileA[threadIdx.y][threadIdx.x] = 0;
+
+		if (col < bcols && t * tilesize + threadIdx.y < acols)
+			tileB[threadIdx.y][threadIdx.x] = B[(t * tilesize + threadIdx.y) * bcols + col];
+		else
+			tileB[threadIdx.y][threadIdx.x] = 0;
+
+		__syncthreads();
+
+		// Compute the partial dot product for this tile
+		for (int k = 0; k < tilesize; k++) {
+			value += tileA[threadIdx.y][k] * tileB[k][threadIdx.x];
 		}
-		C[row * colC + col] = sum;
+		__syncthreads();
+	}
+
+	// Write the result to the output matrix
+	if (row < arows && col < bcols) {
+		C[row * bcols + col] = value;
 	}
 }
+
 template <typename U>
 __global__ void matadd_K(U* A, U* B, U* C, int cols, int rows) {//CUDA kernel for matrix addition
 
@@ -264,17 +293,28 @@ __global__ void mat_scal_div_K(U a, U* A, U* C, int cols, int rows) {//CUDA kern
 template <typename U>
 void matmult(U* A, const U* B, U* C, int arows, int acols, int brows, int bcols) {//CUDA wrapper function for matrix multiplication
 	U* c_A, * c_B, * c_C;
-	cudaMallocManaged(&c_A, arows * acols * sizeof(U));
-	cudaMallocManaged(&c_B, brows * bcols * sizeof(U));
-	cudaMallocManaged(&c_C, arows * bcols * sizeof(U));
+	const int tilesize = 16;
+	cudaMalloc(&c_A, arows * acols * sizeof(U));
+	cudaMalloc(&c_B, brows * bcols * sizeof(U));
+	cudaMalloc(&c_C, arows * bcols * sizeof(U));
 
 	cudaMemcpy(c_A, A, arows * acols * sizeof(U), cudaMemcpyHostToDevice);
 	cudaMemcpy(c_B, B, brows * bcols * sizeof(U), cudaMemcpyHostToDevice);
 
-	dim3 grid(bcols / 32 + 1, arows / 32 + 1, 1);
-	dim3 block(32, 32, 1);
-	matmult_K << <grid, block >> > (c_A, c_B, c_C, acols, arows, bcols);
+	dim3 block(tilesize, tilesize); // Threads per block
+	dim3 grid((bcols + block.x - 1) / block.x, (arows + block.y - 1) / block.y);
+
+	matmult_K<<<grid, block>>>(c_A, c_B, c_C, acols, arows, bcols);
+
 	cudaMemcpy(C, c_C, arows * bcols * sizeof(U), cudaMemcpyDeviceToHost);
+	// check for error
+	cudaError_t error = cudaGetLastError();
+	if(error != cudaSuccess)
+	{
+		// print the CUDA error message and exit
+		printf("CUDA error: %s\n", cudaGetErrorString(error));
+
+	}
 	cudaFree(c_A);
 	cudaFree(c_B);
 	cudaFree(c_C);
@@ -377,6 +417,14 @@ void matop(int a, U* A, const U* B, U* C, int arows, int acols) {//CUDA wrapper 
 	}
 
 	cudaMemcpy(C, c_C, arows * acols * sizeof(U), cudaMemcpyDeviceToHost);
+	// check for error
+	cudaError_t error = cudaGetLastError();
+	if(error != cudaSuccess)
+	{
+		// print the CUDA error message and exit
+		printf("CUDA error: %s\n", cudaGetErrorString(error));
+
+	}
 	cudaFree(c_A);
 	cudaFree(c_B);
 	cudaFree(c_C);
