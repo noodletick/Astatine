@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------------------------------//
-//	Matthew Jouffray 2024
+//	
 //	header file containing the matrix class implementation
 // ------------------------------------------------------------------------------------------------//
 #pragma once
@@ -478,3 +478,4 @@ void mat<U>::print() { // matrix print function
 }
 
 #endif
+
