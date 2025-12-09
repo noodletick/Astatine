@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------------------------------//
-//	Matthew Jouffray 2024
+//	
 //	header file containing all CUDA kernels used by the Matrix class
 // ------------------------------------------------------------------------------------------------//
 #pragma once
@@ -458,5 +458,6 @@ void mat_indx(U* A, U* C, int arows, int acols) {//CUDA wrapper function for sca
 	cudaFree(c_A);
 	cudaFree(c_C);
 }
+
 
 #endif
